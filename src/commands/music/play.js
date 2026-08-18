@@ -2,7 +2,6 @@ import { SlashCommandBuilder } from 'discord.js';
 import { Innertube } from 'youtubei.js';
 import { embed, COLORS } from '../../utils/helpers.js';
 import { getQueue, formatDuration } from '../../utils/musicPlayer.js';
-import { parseSpotifyUrl, getSpotifyTrack, getSpotifyAlbumTracks, getSpotifyPlaylistTracks } from '../../utils/spotify.js';
 import {
   parseSpotifyUrl,
   getSpotifyTrack,

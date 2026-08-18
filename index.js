@@ -35,3 +35,16 @@ if (!process.env.DISCORD_TOKEN) {
 }
 
 client.login(process.env.DISCORD_TOKEN);
+
+import express from "express";
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get("/", (req, res) => {
+    res.send("Omnibot is online!");
+});
+
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🌐 Serveur HTTP lancé sur le port ${PORT}`);
+});

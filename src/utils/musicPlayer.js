@@ -92,20 +92,66 @@ class QueueState {
   }
 
   async connect(voiceChannel) {
-    this.connection = joinVoiceChannel({
-      channelId: voiceChannel.id,
-      guildId: voiceChannel.guild.id,
-      adapterCreator: voiceChannel.guild.voiceAdapterCreator,
-    });
+  console.log('[VOICE] Tentative de connexion...');
+  console.log('[VOICE] Salon:', voiceChannel.name);
+  console.log('[VOICE] Channel ID:', voiceChannel.id);
+  console.log('[VOICE] Guild ID:', voiceChannel.guild.id);
 
-    this.connection.subscribe(this.player);
+  const permissions = voiceChannel.permissionsFor(
+    voiceChannel.guild.members.me
+  );
 
+  console.log('[VOICE] Permissions:', {
+    ViewChannel: permissions?.has('ViewChannel'),
+    Connect: permissions?.has('Connect'),
+    Speak: permissions?.has('Speak'),
+  });
+
+  this.connection = joinVoiceChannel({
+    channelId: voiceChannel.id,
+    guildId: voiceChannel.guild.id,
+    adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+
+    // Important pour un bot qui doit parler
+    selfDeaf: false,
+    selfMute: false,
+  });
+
+  this.connection.on('stateChange', (oldState, newState) => {
+    console.log(
+      `[VOICE] État: ${oldState.status} -> ${newState.status}`
+    );
+  });
+
+  this.connection.on('error', (err) => {
+    console.error('[VOICE] ERREUR CONNEXION:', err);
+  });
+
+  this.connection.subscribe(this.player);
+
+  try {
     await entersState(
       this.connection,
       VoiceConnectionStatus.Ready,
       15_000
     );
+
+    console.log('[VOICE] ✅ Connexion vocale établie !');
+
+  } catch (err) {
+    console.error('[VOICE] ❌ Impossible de passer à Ready');
+    console.error('[VOICE] Erreur complète:', err);
+    console.error('[VOICE] État actuel:', this.connection.state);
+
+    try {
+      this.connection.destroy();
+    } catch {}
+
+    this.connection = null;
+
+    throw err;
   }
+}
 
   clearIdleTimer() {
     if (this.idleTimer) {

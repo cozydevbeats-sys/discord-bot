@@ -167,20 +167,66 @@ try {
     };
   }
 
-} catch (err) {
+    } catch (err) {
+      console.error(
+        '[musique] recherche YouTube échouée:',
+        err
+      );
 
-  console.error(
-    '[musique] recherche YouTube échouée:',
-    err
-  );
+      return interaction.editReply({
+        embeds: [
+          embed({
+            description:
+              '❌ Erreur de recherche YouTube. Réessaie avec un autre titre ou lien.',
+            color: COLORS.error,
+          }),
+        ],
+      });
+    }
 
-  return interaction.editReply({
-    embeds: [
-      embed({
-        description:
-          '❌ Erreur de recherche YouTube. Réessaie avec un autre titre ou lien.',
-        color: COLORS.error,
-      }),
-    ],
-  });
-}
+    // ---------- Ajout à la file et connexion vocale ----------
+
+    const queue = getQueue(interaction.guild, interaction.channel);
+
+    if (!queue.connection) {
+      try {
+        await queue.connect(voiceChannel);
+      } catch (err) {
+        console.error(
+          '[musique] connexion vocale échouée :',
+          err
+        );
+
+        return interaction.editReply({
+          embeds: [
+            embed({
+              description:
+                '❌ Impossible de rejoindre le salon vocal (vérifie mes permissions Connexion/Voix).',
+              color: COLORS.error,
+            }),
+          ],
+        });
+      }
+    }
+
+    queue.add({
+      title: info.title,
+      url: info.url,
+      duration: info.durationInSec,
+      requestedBy: interaction.user.toString(),
+    });
+
+    return interaction.editReply({
+      embeds: [
+        embed({
+          title: '🎶 Lecture démarrée',
+          description:
+            `**${info.title}**\n` +
+            `Durée : ${formatDuration(info.durationInSec)}\n` +
+            `Demandé par ${interaction.user}`,
+          color: COLORS.success,
+        }),
+      ],
+    });
+  },
+};

@@ -1,10 +1,54 @@
 import { SlashCommandBuilder } from 'discord.js';
-import play from 'play-dl';
+import { Innertube } from 'youtubei.js';
 import { embed, COLORS } from '../../utils/helpers.js';
 import { getQueue, formatDuration } from '../../utils/musicPlayer.js';
 import { parseSpotifyUrl, getSpotifyTrack, getSpotifyAlbumTracks, getSpotifyPlaylistTracks } from '../../utils/spotify.js';
 
 const MAX_SPOTIFY_IMPORT = 50; // limite raisonnable pour un import d'album/playlist en une fois
+
+let youtubePromise = null;
+
+function getYouTube() {
+  if (!youtubePromise) {
+    youtubePromise = Innertube.create({
+      lang: 'fr',
+      location: 'FR',
+    });
+  }
+
+  return youtubePromise;
+}
+
+function extractVideoId(url) {
+  try {
+    const parsed = new URL(url);
+
+    if (parsed.hostname === 'youtu.be') {
+      return parsed.pathname.slice(1);
+    }
+
+    if (
+      parsed.hostname === 'youtube.com' ||
+      parsed.hostname.endsWith('.youtube.com')
+    ) {
+      return parsed.searchParams.get('v');
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function resolveYoutube(searchTerm) {
+  const youtube = await getYouTube();
+
+  const results = await youtube.search(searchTerm, {
+    type: 'video',
+  });
+
+  return results.videos?.[0] || null;
+}
 
 async function resolveYoutube(searchTerm) {
   const results = await play.search(searchTerm, { limit: 1, source: { youtube: 'video' } });
@@ -79,47 +123,63 @@ export default {
     }
 
     // ---------- Recherche classique / lien YouTube ----------
-    let info;
-    try {
-      if (play.yt_validate(query) === 'video') {
-        const details = await play.video_basic_info(query);
-        info = details.video_details;
-      } else {
-        const results = await play.search(query, { limit: 1, source: { youtube: 'video' } });
-        if (!results.length) {
-          return interaction.editReply({ embeds: [embed({ description: '❌ Aucun résultat trouvé pour cette recherche.', color: COLORS.error })] });
-        }
-        info = results[0];
-      }
-    } catch (err) {
-      console.error('[musique] recherche échouée :', err.message);
-      return interaction.editReply({ embeds: [embed({ description: '❌ Erreur de recherche. Réessaie, ou vérifie le lien.', color: COLORS.error })] });
-    }
 
-    const track = {
-      title: info.title || 'Titre inconnu',
-      url: info.url,
-      duration: info.durationInSec,
-      requestedBy: interaction.user.toString(),
+let info;
+
+try {
+  const videoId = extractVideoId(query);
+
+  if (videoId) {
+    const youtube = await getYouTube();
+
+    const details = await youtube.getBasicInfo(videoId);
+
+    info = {
+      title: details.basic_info?.title || 'Titre inconnu',
+      url: `https://www.youtube.com/watch?v=${videoId}`,
+      durationInSec: Number(details.basic_info?.duration || 0),
     };
 
-    const queue = getQueue(interaction.guild, interaction.channel);
-    if (!queue.connection) {
-      try {
-        await queue.connect(voiceChannel);
-      } catch (err) {
-        console.error('[musique] connexion vocale échouée :', err.message);
-        return interaction.editReply({ embeds: [embed({ description: '❌ Impossible de rejoindre le salon vocal (vérifie mes permissions Connexion/Voix).', color: COLORS.error })] });
-      }
+  } else {
+
+    const result = await resolveYoutube(query);
+
+    if (!result) {
+      return interaction.editReply({
+        embeds: [
+          embed({
+            description:
+              '❌ Aucun résultat trouvé pour cette recherche.',
+            color: COLORS.error,
+          }),
+        ],
+      });
     }
 
-    const wasIdle = !queue.current;
-    queue.add(track);
+    info = {
+      title: result.title || 'Titre inconnu',
+      url: result.url || `https://www.youtube.com/watch?v=${result.id}`,
+      durationInSec:
+        result.duration?.seconds ??
+        result.durationInSec ??
+        0,
+    };
+  }
 
-    await interaction.editReply({ embeds: [embed({
-      title: wasIdle ? '🎶 Lecture démarrée' : '➕ Ajouté à la file',
-      description: `**${track.title}**\nDurée : ${formatDuration(track.duration)} · Demandé par ${interaction.user}`,
-      color: COLORS.success,
-    })] });
-  },
-};
+} catch (err) {
+
+  console.error(
+    '[musique] recherche YouTube échouée:',
+    err
+  );
+
+  return interaction.editReply({
+    embeds: [
+      embed({
+        description:
+          '❌ Erreur de recherche YouTube. Réessaie avec un autre titre ou lien.',
+        color: COLORS.error,
+      }),
+    ],
+  });
+}

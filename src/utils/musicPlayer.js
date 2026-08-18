@@ -81,7 +81,7 @@ class QueueState {
         embeds: [embed({ title: '🎶 Lecture en cours', description: `**${next.title}**\nDemandé par ${next.requestedBy}`, color: COLORS.success })],
       }).catch(() => {});
     } catch (err) {
-      console.error('[musique] impossible de lire la piste :', err.message);
+      console.error('[musique] impossible de lire la piste :', err);
       this.textChannel?.send({
         embeds: [embed({ description: `❌ Impossible de lire **${next.title}**, passage à la suivante.`, color: COLORS.error })],
       }).catch(() => {});

@@ -56,10 +56,6 @@ async function resolveYoutube(searchTerm) {
   return results.videos?.[0] || null;
 }
 
-async function resolveYoutube(searchTerm) {
-  const results = await play.search(searchTerm, { limit: 1, source: { youtube: 'video' } });
-  return results[0] || null;
-}
 
 export default {
   data: new SlashCommandBuilder()

@@ -4,6 +4,55 @@ import { loadCommands } from './src/handlers/commandHandler.js';
 
 const client = { commands: new Collection() };
 
+try {
+  console.log('🔄 Chargement des commandes...');
+
+  await loadCommands(client);
+
+  const commands = client.commands.map((c) => c.data.toJSON());
+
+  console.log(`📦 ${commands.length} commande(s) chargée(s).`);
+
+  if (!process.env.DISCORD_TOKEN) {
+    throw new Error('DISCORD_TOKEN manquant');
+  }
+
+  if (!process.env.CLIENT_ID) {
+    throw new Error('CLIENT_ID manquant');
+  }
+
+  if (!process.env.GUILD_ID) {
+    throw new Error('GUILD_ID manquant');
+  }
+
+  console.log(`🚀 Déploiement sur le serveur ${process.env.GUILD_ID}...`);
+
+  const rest = new REST({ version: '10' }).setToken(
+    process.env.DISCORD_TOKEN
+  );
+
+  await rest.put(
+    Routes.applicationGuildCommands(
+      process.env.CLIENT_ID,
+      process.env.GUILD_ID
+    ),
+    { body: commands }
+  );
+
+  console.log(`✅ ${commands.length} commandes déployées avec succès !`);
+
+  process.exit(0);
+} catch (error) {
+  console.error('❌ Échec du déploiement des commandes :');
+  console.error(error);
+
+  process.exit(1);
+}import 'dotenv/config';
+import { REST, Routes, Collection } from 'discord.js';
+import { loadCommands } from './src/handlers/commandHandler.js';
+
+const client = { commands: new Collection() };
+
 await loadCommands(client);
 
 const commands = client.commands.map((c) => c.data.toJSON());

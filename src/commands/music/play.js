@@ -3,6 +3,12 @@ import { Innertube } from 'youtubei.js';
 import { embed, COLORS } from '../../utils/helpers.js';
 import { getQueue, formatDuration } from '../../utils/musicPlayer.js';
 import { parseSpotifyUrl, getSpotifyTrack, getSpotifyAlbumTracks, getSpotifyPlaylistTracks } from '../../utils/spotify.js';
+import {
+  parseSpotifyUrl,
+  getSpotifyTrack,
+  getSpotifyAlbumTracks,
+  getSpotifyPlaylistTracks
+} from '../../utils/spotify.js';
 
 const MAX_SPOTIFY_IMPORT = 50; // limite raisonnable pour un import d'album/playlist en une fois
 

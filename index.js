@@ -136,13 +136,54 @@ client.commands = new Collection();
 await loadCommands(client);
 await loadEvents(client);
 
-// Sécurité : erreurs non gérées
 process.on('unhandledRejection', (err) => {
   console.error('[unhandledRejection]', err);
 });
 
 process.on('uncaughtException', (err) => {
   console.error('[uncaughtException]', err);
+});
+
+if (!process.env.DISCORD_TOKEN) {
+  console.error('DISCORD_TOKEN manquant.');
+  process.exit(1);
+}
+
+client.once('ready', async () => {
+  console.log(`Connecte en tant que ${client.user.tag}`);
+  console.log(`Sur ${client.guilds.cache.size} serveur(s).`);
+
+  try {
+    if (!process.env.GUILD_ID) {
+      console.error('GUILD_ID manquant.');
+      return;
+    }
+
+    const commands = client.commands
+      .map(command => {
+        if (!command.data) {
+          console.warn('Commande sans propriete data ignoree.');
+          return null;
+        }
+
+        return command.data.toJSON();
+      })
+      .filter(Boolean);
+
+    console.log(`Synchronisation de ${commands.length} commande(s)...`);
+
+    await client.application.commands.set(
+      commands,
+      process.env.GUILD_ID
+    );
+
+    console.log(
+      `${commands.length} commande(s) synchronisee(s) sur le serveur !`
+    );
+  } catch (error) {
+    console.error('Erreur lors de la synchronisation des commandes :');
+    console.error(error);
+  }
 });
 
 // Vérification du token
@@ -189,8 +230,6 @@ client.once('ready', async () => {
   }
 });
 
-// Connexion Discord
-await client.login(process.env.DISCORD_TOKEN);
 
 // Serveur HTTP nécessaire pour Render
 const app = express();
